@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <title>DEBOOGER</title>
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #fff; }
+    #app { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+    #error { display: none; position: fixed; inset: 0; padding: 24px; box-sizing: border-box; place-content: center; text-align: center; font: 14px/1.6 system-ui, sans-serif; color: #34363b; background: #fff; }
+  </style>
+</head>
+<body>
+  <iframe id="app" title="DEBOOGER" allow="clipboard-read; clipboard-write; fullscreen" allowfullscreen></iframe>
+  <div id="error" role="alert">Could not open DEBOOGER. Check that the repository is public and contains a db.###.html file, then refresh.</div>
+  <script>
+    (() => {
+      'use strict';
+      const repository = 'https://api.github.com/repos/blyattt99/Db/contents/';
+      const viewer = document.getElementById('app');
+      const error = document.getElementById('error');
+
+      async function showLatest() {
+        try {
+          const response = await fetch(repository, {
+            cache: 'no-store',
+            headers: { Accept: 'application/vnd.github+json' }
+          });
+          if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+          const contents = await response.json();
+          if (!Array.isArray(contents)) throw new Error('Invalid repository listing');
+
+          const latest = contents
+            .filter(item => item.type === 'file')
+            .map(item => {
+              const match = /^db\.(\d+)\.html$/i.exec(item.name);
+              return match ? { name: item.name, version: Number(match[1]) } : null;
+            })
+            .filter(Boolean)
+            .sort((a, b) => b.version - a.version || a.name.localeCompare(b.name))[0];
+
+          if (!latest) throw new Error('No numbered DB files found');
+          viewer.src = './' + encodeURIComponent(latest.name);
+        } catch (cause) {
+          console.error('DEBOOGER version loader:', cause);
+          viewer.style.display = 'none';
+          error.style.display = 'grid';
+        }
+      }
+
+      showLatest();
+    })();
+  </script>
+</body>
+</html>
